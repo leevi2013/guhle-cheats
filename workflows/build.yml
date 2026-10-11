@@ -1,0 +1,87 @@
+name: Build Fabric Mod
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build on Java 21
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Locate project and verify Java sources
+        id: project
+        shell: bash
+        run: |
+          if [ -f build.gradle ] && [ -d src/main/java ]; then
+            PROJECT_DIR="."
+          elif [ -f RagzanUtility/build.gradle ] && [ -d RagzanUtility/src/main/java ]; then
+            PROJECT_DIR="RagzanUtility"
+          else
+            echo "Fehler: build.gradle oder src/main/java fehlt im Repository." >&2
+            echo "Stelle sicher, dass die Projektdateien (inkl. src/main/java) hochgeladen wurden." >&2
+            find . -maxdepth 4 -type f | sort | head -200
+            exit 1
+          fi
+          if [ ! -f "$PROJECT_DIR/src/main/java/de/ragzan/utility/RagzanUtilityClient.java" ]; then
+            echo "Fehler: RagzanUtilityClient.java fehlt. Das Projekt wäre ohne Mod-Einstiegspunkt." >&2
+            exit 1
+          fi
+          if ! find "$PROJECT_DIR/src/main/java" -name '*.java' -print -quit | grep -q .; then
+            echo "Fehler: Keine Java-Quelldateien gefunden." >&2
+            exit 1
+          fi
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.2.1'
+
+      - name: Show Gradle version
+        run: gradle --version
+
+      - name: Build mod
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: gradle build --no-daemon
+
+      - name: Verify built JAR contains the actual mod
+        working-directory: ${{ steps.project.outputs.dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR_FILE="$(find build/libs -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' | head -n 1)"
+          if [ -z "$JAR_FILE" ]; then
+            echo "Fehler: Es wurde keine Mod-JAR erzeugt." >&2
+            exit 1
+          fi
+          jar tf "$JAR_FILE" > jar-contents.txt
+          grep -qx 'fabric.mod.json' jar-contents.txt || { echo "Fehler: fabric.mod.json fehlt in $JAR_FILE" >&2; exit 1; }
+          grep -qx 'de/ragzan/utility/RagzanUtilityClient.class' jar-contents.txt || { echo "Fehler: Mod-Einstiegspunkt fehlt in $JAR_FILE" >&2; exit 1; }
+          grep -qx 'de/ragzan/utility/gui/MainMenuScreen.class' jar-contents.txt || { echo "Fehler: Menü-Klasse fehlt in $JAR_FILE" >&2; exit 1; }
+          grep -qx 'de/ragzan/utility/gui/BlockSelectionScreen.class' jar-contents.txt || { echo "Fehler: Blockauswahl mit Suchfunktion fehlt in $JAR_FILE" >&2; exit 1; }
+          grep -qx 'de/ragzan/utility/render/EspRenderer.class' jar-contents.txt || { echo "Fehler: ESP-Renderer fehlt in $JAR_FILE" >&2; exit 1; }
+          echo "Validierte Mod-JAR: $JAR_FILE"
+
+      - name: Upload mod JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: ragzan-utility-minecraft-1.21.11
+          path: |
+            ${{ steps.project.outputs.dir }}/build/libs/*.jar
+            !${{ steps.project.outputs.dir }}/build/libs/*-sources.jar
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "de.ragzan.utility.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "RenderLayerAccessor",
+    "RenderPipelinesAccessor",
+    "MinecraftClientAccessor",
+    "FreecamMovementMixin",
+    "InGameHudMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
