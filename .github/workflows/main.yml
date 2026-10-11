@@ -1,0 +1,26 @@
+RagzanUtility/
+├── build.gradle
+├── gradle.properties
+├── settings.gradle
+├── build.bat
+└── src/main/
+    ├── java/de/ragzan/utility/
+    │   ├── RagzanUtilityClient.java
+    │   ├── ClientLogic.java
+    │   ├── config/ModConfig.java
+    │   ├── gui/MainMenuScreen.java
+    │   ├── gui/ModuleSettingsScreen.java
+    │   ├── gui/BlockSelectionScreen.java
+    │   ├── render/EspRenderer.java
+    │   └── mixin/
+    │       ├── MinecraftClientAccessor.java
+    │       ├── InGameHudMixin.java
+    │       ├── FreecamMovementMixin.java
+    │       ├── RenderLayerAccessor.java
+    │       └── RenderPipelinesAccessor.java
+    └── resources/
+        ├── fabric.mod.json
+        ├── ragzan-utility.mixins.json
+        └── assets/ragzan_utility/lang/
+            ├── de_de.json
+            └── en_us.json
